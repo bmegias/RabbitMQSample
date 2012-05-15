@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 
 namespace RabbitInfrastructure
 {
@@ -32,6 +33,21 @@ namespace RabbitInfrastructure
             {
                 mod.ExchangeDeclare(_xchg, ExchangeType.Direct, true);
                 mod.Publish(_xchg, message);
+            }
+        }
+
+        public void Response(object response, Type responseType, BasicDeliverEventArgs args)
+        {
+            var factory = new ConnectionFactory()
+            {
+                Protocol = Protocols.FromEnvironment(),
+                HostName = _hostName
+            };
+            using (var con = factory.CreateConnection())
+            using (var mod = con.CreateModel())
+            {
+                mod.ExchangeDeclare(_xchg, ExchangeType.Direct, true);
+                mod.Response(_xchg, response, responseType, args.BasicProperties.ReplyTo, args.BasicProperties.CorrelationId);
             }
         }
     }

@@ -16,25 +16,26 @@ namespace Web.Handlers
 {
     public class SignalREventHandler : MessageHandlerBase<OrderPlacedEvent>, IMessageHandler<OrderBilledEvent>, IMessageHandler<OrderShippedEvent>
     {
-        public override void Handle(OrderPlacedEvent message)
+        public override object Handle(OrderPlacedEvent message)
         {
-            broadcastMessage(message);
+            return broadcastMessage(message);
         }
 
-        public void Handle(OrderBilledEvent message)
+        public object Handle(OrderBilledEvent message)
         {
-            broadcastMessage(message);
+            return broadcastMessage(message);
         }
 
-        public void Handle(OrderShippedEvent message)
+        public object Handle(OrderShippedEvent message)
         {
-            broadcastMessage(message);
+            return broadcastMessage(message);
         }
-        void broadcastMessage(MessageBase msg)
+        object broadcastMessage(MessageBase msg)
         {
             var conMgr = AspNetHost.DependencyResolver.Resolve<IConnectionManager>();
             var clients = conMgr.GetClients<Notifications>();
             clients.addMessage(string.Format("{0} : {1}", msg.GetType().FullName, msg.ToJson()));
+            return null;
         }
 
     }

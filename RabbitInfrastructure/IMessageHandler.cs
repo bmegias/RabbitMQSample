@@ -8,11 +8,11 @@ namespace RabbitInfrastructure
 {
     public interface IMessageHandler<T> where T : MessageBase
     {
-        void Handle(T message);
+        object Handle(T message);
     }
     public abstract class MessageHandlerBase<T> : IMessageHandler<T> where T : MessageBase
     {
         protected RabbitPublisher publisher = new RabbitPublisher();
-        public abstract void Handle(T message);
+        public abstract object Handle(T message);
     }
 }

@@ -15,20 +15,26 @@ namespace RabbitInfrastructure
 
     public class RabbitSubscriber
     {
+        string _exchangeName;
         string _queueName;
         string _hostName;
         IEnumerable<IHandlerConfig> _cfg;
-        public RabbitSubscriber(string queueName, string hostName, IEnumerable<IHandlerConfig> cfg) 
+
+        RabbitPublisher _pub;
+
+        public RabbitSubscriber(string exchangeName, string queueName, string hostName, IEnumerable<IHandlerConfig> cfg) 
         {
+            _exchangeName=exchangeName;
             _queueName = queueName;
             _hostName = hostName;
             _cfg = cfg;
+            _pub = new RabbitPublisher(_exchangeName, hostName);
         }
 
         public static void MessageLoop(string serviceName, IEnumerable<IHandlerConfig> cfg)
         {
             Console.WriteLine("*** {0} ***", serviceName);
-            var subscriber = new RabbitSubscriber(serviceName, RabbitCfg.HOST, cfg);
+            var subscriber = new RabbitSubscriber(RabbitCfg.XCHG, serviceName, RabbitCfg.HOST, cfg);
             subscriber.MessageLoop();
         }
 
@@ -45,7 +51,7 @@ namespace RabbitInfrastructure
                 mod.QueueDeclare(_queueName, true, false, false, null);
                 foreach (var h in _cfg)
                 {
-                    var xchg = h.Exchange.ToLowerInvariant();
+                    var xchg = _exchangeName.ToLowerInvariant();
                     var rk = h.MessageType.FullName.ToLowerInvariant();
                     Console.Write("Binding {0}:{1}:{2}... ", xchg, rk, _queueName);
                     mod.ExchangeDeclare(xchg, ExchangeType.Direct, true);
@@ -70,7 +76,20 @@ namespace RabbitInfrastructure
                     byte[] body = e.Body;
                     Console.WriteLine("Received message: " + Encoding.UTF8.GetString(body));
                     var obj = MessageBase.FromJson(body, handler.First().MessageType);
-                    handler.ToList().ForEach(h => h.Handle(obj));
+                    handler
+                        .ToList()
+                        .ForEach(h =>
+                        {
+                            var response = h.Handle(obj);
+
+                            var replyTo = e.BasicProperties.ReplyTo;
+                            var correlationId = e.BasicProperties.CorrelationId;
+                            if (
+                                !string.IsNullOrEmpty(replyTo) && !string.IsNullOrEmpty(correlationId))
+                            {
+                                _pub.Response(response, h.ResponseType, e);
+                            }
+                        });
                 }
             }
         }

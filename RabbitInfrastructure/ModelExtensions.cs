@@ -13,5 +13,13 @@ namespace RabbitInfrastructure
         {
             mod.BasicPublish(xchg, typeof(T).FullName.ToLowerInvariant(), null, Encoding.UTF8.GetBytes(message.ToJson()));
         }
+
+        public static void Response(this IModel mod, string xchg, object message, Type msgType, string routingKey, string correlationId)
+        {
+            var props = mod.CreateBasicProperties();
+            props.CorrelationId = correlationId;
+            var json = MessageBase.ToJson(message, msgType);
+            mod.BasicPublish(xchg, routingKey, props, Encoding.UTF8.GetBytes(json));
+        }
     }
 }

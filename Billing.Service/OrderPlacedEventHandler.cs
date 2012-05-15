@@ -12,7 +12,7 @@ namespace Billing.Service
 {
     class OrderPlacedEventHandler:MessageHandlerBase<OrderPlacedEvent>
     {
-        public override void Handle(OrderPlacedEvent message)
+        public override object Handle(OrderPlacedEvent message)
         {
             Console.Write("Billing order {0}... ", message.OrderId);
             // DO STUFF
@@ -22,6 +22,7 @@ namespace Billing.Service
                 OrderId = message.OrderId
             });
             Console.WriteLine("Done!");
+            return null;
         }
     }
 }

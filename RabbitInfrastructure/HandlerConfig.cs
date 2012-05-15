@@ -11,10 +11,12 @@ namespace RabbitInfrastructure
         public string RoutingKey { get; set; }
         public string Exchange { get; set; }
         public Type MessageType { get { return typeof(T); } }
+        public Type ResponseType { get; set; }
         public IMessageHandler<T> Handler { get; set; }
-        public void Handle(object msg)
+
+        public object Handle(object msg)
         {
-            this.Handler.Handle((T)msg);
+            return this.Handler.Handle((T)msg);
         }
 
         public HandlerConfig(IMessageHandler<T> handler)

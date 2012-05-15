@@ -13,7 +13,7 @@ namespace Orders.Service
     public class PlaceOrderCommandHandler : MessageHandlerBase<PlaceOrderCommand>
     {
         static int orderCounter = 0;
-        public override void Handle(PlaceOrderCommand message)
+        public override object Handle(PlaceOrderCommand message)
         {
             Console.Write("Processing order {0} from customer {1}... ", message.OrderReference, message.CustomerId);
             // DO STUFF
@@ -26,6 +26,7 @@ namespace Orders.Service
                 ShippingAddress = "Address of customer " + message.CustomerId
             });
             Console.WriteLine("Done!");
+            return null;
         }
     }
 }

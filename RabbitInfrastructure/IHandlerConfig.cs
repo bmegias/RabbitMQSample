@@ -9,8 +9,9 @@ namespace RabbitInfrastructure
     public interface IHandlerConfig
     {
         string RoutingKey { get; }
-        string Exchange { get; }
+        //string Exchange { get; }
         Type MessageType { get; }
-        void Handle(object msg);
+        Type ResponseType { get; }
+        object Handle(object msg);
     }
 }
