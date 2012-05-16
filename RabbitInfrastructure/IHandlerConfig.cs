@@ -9,9 +9,12 @@ namespace RabbitInfrastructure
     public interface IHandlerConfig
     {
         string RoutingKey { get; }
-        //string Exchange { get; }
         Type MessageType { get; }
-        Type ResponseType { get; }
         object Handle(object msg);
+    }
+
+    public interface IRPCHandlerConfig : IHandlerConfig
+    {
+        Type ResponseType { get; }
     }
 }

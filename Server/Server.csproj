@@ -41,11 +41,22 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="HelloRequestHandler.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RabbitInfrastructure\RabbitInfrastructure.csproj">
+      <Project>{abdb789a-c28e-4239-8199-da51e4206a78}</Project>
+      <Name>RabbitInfrastructure</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Server.Messages\Server.Messages.csproj">
+      <Project>{5016f3f1-cca5-4f54-b751-e4710fa3cfe3}</Project>
+      <Name>Server.Messages</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

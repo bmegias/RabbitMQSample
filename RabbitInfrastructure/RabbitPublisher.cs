@@ -12,6 +12,8 @@ namespace RabbitInfrastructure
     {
         string _xchg;
         string _hostName;
+
+
         public RabbitPublisher()
             : this(RabbitCfg.XCHG, RabbitCfg.HOST)
         { }
@@ -36,6 +38,34 @@ namespace RabbitInfrastructure
             }
         }
 
+        public string PublishRequest<T,Tresp>(T message) 
+            where T : MessageBase
+            where Tresp : MessageBase
+        {
+            return PublishRequest<T,Tresp>(message, string.Empty);
+        }
+
+        public string PublishRequest<T,Tresp>(T message, string correlationId) 
+            where T : MessageBase
+            where Tresp : MessageBase
+        {
+            var factory = new ConnectionFactory()
+            {
+                Protocol = Protocols.FromEnvironment(),
+                HostName = _hostName
+            };
+
+            var corrId = string.IsNullOrWhiteSpace(correlationId) ? Guid.NewGuid().ToString() : correlationId;
+
+            using (var con = factory.CreateConnection())
+            using (var mod = con.CreateModel())
+            {
+                mod.ExchangeDeclare(_xchg, ExchangeType.Direct, true);
+                mod.PublishRequest<T, Tresp>(_xchg, message, corrId);
+            }
+            return corrId;
+        }
+
         public void Response(object response, Type responseType, BasicDeliverEventArgs args)
         {
             var factory = new ConnectionFactory()
@@ -47,7 +77,7 @@ namespace RabbitInfrastructure
             using (var mod = con.CreateModel())
             {
                 mod.ExchangeDeclare(_xchg, ExchangeType.Direct, true);
-                mod.Response(_xchg, response, responseType, args.BasicProperties.ReplyTo, args.BasicProperties.CorrelationId);
+                mod.Response(_xchg, response, args.BasicProperties.ReplyTo, args.BasicProperties.CorrelationId);
             }
         }
     }

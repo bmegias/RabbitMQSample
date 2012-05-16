@@ -12,8 +12,9 @@ namespace RabbitInfrastructure
     [DataContract]
     public abstract class MessageBase
     {
-        public static string ToJson(object obj,Type t)
+        public static string ToJson(object obj)
         {
+            var t = obj.GetType();
             using (var stream1 = new MemoryStream())
             {
                 var ser = new DataContractJsonSerializer(t);
@@ -26,7 +27,7 @@ namespace RabbitInfrastructure
 
         public string ToJson()
         {
-            return ToJson(this,this.GetType());
+            return ToJson(this);
         }
 
         public static object FromJson(byte[] str, Type type) 
