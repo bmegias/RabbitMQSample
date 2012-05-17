@@ -9,7 +9,7 @@ namespace AsyncWeb.Controllers
 {
     public class HomeController : AsyncController
     {
-        //[AsyncTimeout(5)]
+        [AsyncTimeout(5000)]
         [AcceptVerbs(HttpVerbs.Post)]
         public void SayHelloAsync(string name)
         {
@@ -24,14 +24,6 @@ namespace AsyncWeb.Controllers
                         AsyncManager.Parameters["msg"] = response.HelloMessage;
                         AsyncManager.OutstandingOperations.Decrement();
                     });
-
-            //NewsService newsService = new NewsService();
-            //newsService.GetHeadlinesCompleted += (sender, e) =>
-            //{
-            //    AsyncManager.Parameters["msg"] = e.Value;
-            //    AsyncManager.OutstandingOperations.Decrement();
-            //};
-            //newsService.GetHeadlinesAsync(city);
         }
 
         public JsonResult SayHelloCompleted(string msg)

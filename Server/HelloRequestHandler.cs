@@ -15,7 +15,7 @@ namespace Server
         public override object Handle(HelloRequest message)
         {
             Console.WriteLine("Received: {0}", message.ToJson());
-            Thread.Sleep(TimeSpan.FromSeconds(rnd.Next(2, 8)));
+            Thread.Sleep(TimeSpan.FromSeconds(rnd.Next(1, 7)));
             return new HelloResponse()
             {
                 HelloMessage = string.Format("Hello {0}", message.Name)

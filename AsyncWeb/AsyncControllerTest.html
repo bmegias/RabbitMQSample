@@ -16,6 +16,9 @@
                         },
                         success: function (msg) {
                             $("#status").text("Response: " + msg);
+                        },
+                        error: function (err) {
+                            $("#status").text("FAIL");
                         }
                     });
             });
