@@ -10,7 +10,7 @@ using RabbitMQ.Client.Events;
 
 namespace RabbitInfrastructure
 {
-    public class MessageReceivedEventArgs
+    public class MessageReceivedEventArgs : EventArgs
     {
         public MessageBase Message { get; set; }
         public string CorrelationId { get; set; }
@@ -19,6 +19,31 @@ namespace RabbitInfrastructure
 
     public class RabbitSubscriber
     {
+        interface IResponseHandler
+        {
+            void Handle(object msg);
+        }
+
+        class ResponseHandler<T>:IResponseHandler
+            where T : MessageBase
+        {
+            public Action<T> Handler { get; set; }
+
+            public virtual void Handle(object msg)
+            {
+                this.Handler(msg as T);
+            }
+
+            public ResponseHandler(Action<T> handler)
+            {
+                Handler = handler;
+            }
+        }
+
+
+        Dictionary<string, IResponseHandler> _responseHandlers;
+        object _syncResponseHandlers;
+
         string _exchangeName;
         string _queueName;
         string _hostName;
@@ -39,11 +64,14 @@ namespace RabbitInfrastructure
 
         public RabbitSubscriber(string exchangeName, string queueName, string hostName, IEnumerable<IHandlerConfig> cfg) 
         {
+            _responseHandlers = new Dictionary<string, IResponseHandler>();
+            _syncResponseHandlers = new object();
+
             _exchangeName=exchangeName;
             _queueName = queueName;
             _hostName = hostName;
             _cfg = cfg;
-            _pub = new RabbitPublisher(_exchangeName, hostName);
+            _pub = new RabbitPublisher(_exchangeName, hostName, this);
         }
 
         public static void MessageLoop(string serviceName, IEnumerable<IHandlerConfig> cfg)
@@ -81,49 +109,59 @@ namespace RabbitInfrastructure
                 {
                     var e = (BasicDeliverEventArgs)consumer.Queue.Dequeue();
                     mod.BasicAck(e.DeliveryTag, false);
-                    IBasicProperties props = e.BasicProperties;
-                    var handler = _cfg.Where(c => c.RoutingKey.Equals(e.RoutingKey, StringComparison.InvariantCultureIgnoreCase));
-                    
-                    byte[] body = e.Body;
-                    
-                    Console.WriteLine("Received message: " + Encoding.UTF8.GetString(body));
-                    var obj = MessageBase.FromJson(body, handler.First().MessageType);
-                    var correlationId = e.BasicProperties.CorrelationId;
-                    var replyTo = e.BasicProperties.ReplyTo;
 
-                    var evtArgs = new MessageReceivedEventArgs()
-                    {
-                        Message = obj as MessageBase,
-                        CorrelationId = correlationId,
-                        ReplyTo = replyTo
-                    };
-
-                    RaiseMessageReceived(evtArgs);
-
-                    if (!handler.Any())
-                    {
-                        Console.WriteLine("Unknown type: {0}", e.RoutingKey);
-                        continue;
-                    }
-
-                    handler
-                        .ToList()
-                        .ForEach(h =>
+                    var tsk = Task.Run(
+                        () =>
                         {
-                            var response = h.Handle(obj);
-                            var hRPC = h as IRPCHandlerConfig;
-                            if (hRPC != null)
+                            var props = e.BasicProperties;
+                            var handler = _cfg.Where(c => c.RoutingKey.Equals(e.RoutingKey, StringComparison.InvariantCultureIgnoreCase));
+
+                            byte[] body = e.Body;
+
+                            Console.WriteLine("Received message: " + Encoding.UTF8.GetString(body));
+                            var obj = MessageBase.FromJson(body, handler.First().MessageType);
+                            var correlationId = e.BasicProperties.CorrelationId;
+                            var replyTo = e.BasicProperties.ReplyTo;
+
+                            var evtArgs = new MessageReceivedEventArgs()
                             {
-                                if (!string.IsNullOrEmpty(replyTo) && !string.IsNullOrEmpty(correlationId))
+                                Message = obj as MessageBase,
+                                CorrelationId = correlationId,
+                                ReplyTo = replyTo
+                            };
+
+                            RaiseMessageReceived(evtArgs);
+
+                            handler
+                                .AsParallel()
+                                .ForAll(h =>
                                 {
-                                    Console.WriteLine(
-                                        "Replying RK: {0} CorrelationId: {1} Response: {2}"
-                                        , e.BasicProperties.ReplyTo
-                                        , e.BasicProperties.CorrelationId
-                                        , MessageBase.ToJson(response));
-                                    _pub.Response(response, hRPC.ResponseType, e);
-                                }
-                            }
+                                    var response = h.Handle(obj);
+                                    var hRPC = h as IRPCHandlerConfig;
+                                    var mustReply =
+                                        hRPC != null
+                                        && !string.IsNullOrEmpty(replyTo)
+                                        && !string.IsNullOrEmpty(correlationId);
+                                    var isAReply = !string.IsNullOrEmpty(correlationId);
+                                    if (mustReply)
+                                    {
+                                        Console.WriteLine(
+                                            "Replying RK: {0} CorrelationId: {1} Response: {2}"
+                                            , e.BasicProperties.ReplyTo
+                                            , e.BasicProperties.CorrelationId
+                                            , MessageBase.ToJson(response));
+                                        _pub.Response(response, hRPC.ResponseType, e);
+                                    }
+                                    if (isAReply)
+                                    {
+                                        var han = getHandler(correlationId);
+                                        if (han != null)
+                                        {
+                                            han.Handle(obj);
+                                            UnSubscribeResponse(correlationId);
+                                        }
+                                    }
+                                });
                         });
                 }
             }
@@ -131,7 +169,30 @@ namespace RabbitInfrastructure
 
         public void StartAsyncMessageLoop()
         {
-            var tsk = Task.Run(() => this.MessageLoop());
+            Task.Run(() => this.MessageLoop());
+        }
+
+        IResponseHandler getHandler(string corId)
+        {
+            IResponseHandler handler = null;
+            _responseHandlers.TryGetValue(corId, out handler);
+            return handler;
+        }
+
+        public void SubscribeResponse<T>(string corId, Action<T> action) where T : MessageBase
+        {
+            lock (_syncResponseHandlers)
+            {
+                _responseHandlers.Add(corId, new ResponseHandler<T>(action));
+            }
+        }
+
+        void UnSubscribeResponse(string corId)
+        {
+            lock (_syncResponseHandlers)
+            {
+                _responseHandlers.Remove(corId);
+            }
         }
     }
 }

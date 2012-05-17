@@ -12,15 +12,16 @@ namespace RabbitInfrastructure
     {
         string _xchg;
         string _hostName;
-
+        RabbitSubscriber _sub;
 
         public RabbitPublisher()
-            : this(RabbitCfg.XCHG, RabbitCfg.HOST)
+            : this(RabbitCfg.XCHG, RabbitCfg.HOST, null)
         { }
 
-        public RabbitPublisher(string xchg, string hostName) {
+        public RabbitPublisher(string xchg, string hostName, RabbitSubscriber subs) {
             _xchg = xchg;
             _hostName = hostName;
+            _sub = subs;
         }
 
         public void Publish<T>(T message) where T:MessageBase 
@@ -38,17 +39,20 @@ namespace RabbitInfrastructure
             }
         }
 
-        public string PublishRequest<T,Tresp>(T message) 
-            where T : MessageBase
-            where Tresp : MessageBase
-        {
-            return PublishRequest<T,Tresp>(message, string.Empty);
-        }
+        //public string PublishRequest<T,Tresp>(T message) 
+        //    where T : MessageBase
+        //    where Tresp : MessageBase
+        //{
+        //    return PublishRequest<T,Tresp>(message, string.Empty);
+        //}
 
-        public string PublishRequest<T,Tresp>(T message, string correlationId) 
+        public string PublishRequest<T, Tresp>(string correlationId, T message, Action<Tresp> responseHandler)
             where T : MessageBase
             where Tresp : MessageBase
         {
+            if (_sub == null)
+                throw new ArgumentException("A subscriber must be provided to perform RPC calls");
+
             var factory = new ConnectionFactory()
             {
                 Protocol = Protocols.FromEnvironment(),
@@ -56,6 +60,8 @@ namespace RabbitInfrastructure
             };
 
             var corrId = string.IsNullOrWhiteSpace(correlationId) ? Guid.NewGuid().ToString() : correlationId;
+
+            _sub.SubscribeResponse(correlationId, responseHandler);
 
             using (var con = factory.CreateConnection())
             using (var mod = con.CreateModel())
