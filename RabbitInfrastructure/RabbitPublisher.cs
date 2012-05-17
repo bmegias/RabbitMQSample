@@ -39,12 +39,13 @@ namespace RabbitInfrastructure
             }
         }
 
-        //public string PublishRequest<T,Tresp>(T message) 
-        //    where T : MessageBase
-        //    where Tresp : MessageBase
-        //{
-        //    return PublishRequest<T,Tresp>(message, string.Empty);
-        //}
+        public string PublishRequest<T, Tresp>(T message, Action<Tresp> responseHandler)
+            where T : MessageBase
+            where Tresp : MessageBase
+        {
+            var corId = Guid.NewGuid().ToString();
+            return PublishRequest(corId, message, responseHandler);
+        }
 
         public string PublishRequest<T, Tresp>(string correlationId, T message, Action<Tresp> responseHandler)
             where T : MessageBase

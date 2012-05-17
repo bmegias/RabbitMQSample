@@ -1,0 +1,30 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <script src="Scripts/jquery-1.7.2.min.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $("#lnkQuery")
+                .click(function () {
+                    $("#status").text("Calling...");
+                    $.ajax({
+                        type: 'POST',
+                        url: '/Home/SayHello',
+                        data: {
+                            'name': $("#txtName").val(),
+                        },
+                        success: function (msg) {
+                            $("#status").text("Response: " + msg);
+                        }
+                    });
+            });
+        });
+</script>
+</head>
+<body>
+    <input type="text" id="txtName" value="Brau" />
+    <div id="lnkQuery">Click me!</div>
+    <div id="status"></div>
+</body>
+</html>

@@ -11,10 +11,11 @@ namespace Server
 {
     public class HelloRequestHandler : MessageHandlerBase<HelloRequest>
     {
+        Random rnd = new Random();
         public override object Handle(HelloRequest message)
         {
             Console.WriteLine("Received: {0}", message.ToJson());
-            Thread.Sleep(TimeSpan.FromSeconds(10));
+            Thread.Sleep(TimeSpan.FromSeconds(rnd.Next(2, 8)));
             return new HelloResponse()
             {
                 HelloMessage = string.Format("Hello {0}", message.Name)
